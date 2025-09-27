@@ -8,36 +8,85 @@ function setupI18n() {
         const key = elem.getAttribute('data-i18n-placeholder');
         elem.placeholder = chrome.i18n.getMessage(key);
     });
-    document.title = chrome.i18n.getMessage('settingsTitle');
+    document.title = chrome.i18n.getMessage('settingsTitle') || 'LLM Translate Settings';
+}
+
+// --- Make select elements searchable ---
+function makeSelectSearchable(selectElement) {
+    let searchTimeout;
+    let searchString = '';
+
+    selectElement.addEventListener('keydown', (e) => {
+        // Clear search string on special keys
+        if (e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') {
+            searchString = '';
+            return;
+        }
+
+        // Only process printable characters
+        if (e.key.length === 1) {
+            e.preventDefault();
+            searchString += e.key.toLowerCase();
+
+            // Clear search string after 1 second of no typing
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchString = '';
+            }, 1000);
+
+            // Find and select matching option
+            const options = Array.from(selectElement.options);
+            const matchingOption = options.find(option => 
+                option.text.toLowerCase().includes(searchString)
+            );
+
+            if (matchingOption) {
+                selectElement.value = matchingOption.value;
+                selectElement.dispatchEvent(new Event('change'));
+            }
+        }
+    });
 }
 
 // --- Language Data ---
 const languageKeys = [
-    "langEnglish", "langSimplifiedChinese", "langTraditionalChinese", "langFrench", "langSpanish", "langArabic", "langRussian", "langPortuguese", "langGerman", "langItalian", "langDutch", "langDanish", "langIrish", "langWelsh", "langFinnish", "langIcelandic", "langSwedish", "langNorwegianNynorsk", "langNorwegianBokmal", "langJapanese", "langKorean", "langVietnamese", "langThai", "langIndonesian", "langMalay", "langBurmese", "langTagalog", "langKhmer", "langLao", "langHindi", "langBengali", "langUrdu", "langNepali", "langHebrew", "langTurkish", "langPersian", "langPolish", "langUkrainian", "langCzech", "langRomanian", "langBulgarian", "langSlovak", "langHungarian", "langSlovenian", "langLatvian", "langEstonian", "langLithuanian", "langBelarusian", "langGreek", "langCroatian", "langMacedonian", "langMaltese", "langSerbian", "langBosnian", "langGeorgian", "langArmenian", "langNorthAzerbaijani", "langKazakh", "langNorthernUzbek", "langTajik", "langSwahili", "langAfrikaans", "langCantonese", "langLuxembourgish", "langLimburgish", "langCatalan", "langGalician", "langAsturian", "langBasque", "langOccitan", "langVenetian", "langSardinian", "langSicilian", "langFriulian", "langLombard", "langLigurian", "langFaroese", "langToskAlbanian", "langSilesian", "langBashkir", "langTatar", "langMesopotamianArabic", "langNajdiArabic", "langEgyptianArabic", "langLevantineArabic", "langTaizziAdeniArabic", "langDari", "langTunisianArabic", "langMoroccanArabic", "langKabuverdianu", "langTokPisin", "langEasternYiddish", "langSindhi", "langSinhala", "langTelugu", "langPunjabi", "langTamil", "langGujarati", "langMalayalam", "langMarathi", "langKannada", "langMagahi", "langOriya", "langAwadhi", "langMaithili", "langAssamese", "langChhattisgarhi", "langBhojpuri", "langMinangkabau", "langBalinese", "langJavanese", "langBanjar", "langSundanese", "langCebuano", "langPangasinan", "langIloko", "langWarayPhilippines", "langHaitian", "langPapiamento"
+    "langEnglish", "langSimplifiedChinese", "langTraditionalChinese", "langFrench", "langSpanish", "langArabic", "langRussian", "langPortuguese", "langGerman", "langItalian", "langDutch", "langDanish", "langJapanese", "langKorean", "langVietnamese", "langThai", "langIndonesian", "langHindi", "langTurkish", "langPolish", "langFinnish", "langHungarian", "langCzech", "langGreek", "langRomanian", "langSlovak"
 ];
 
 function populateLanguages() {
     const defaultTargetLanguageSelect = document.getElementById('default-target-language');
     const secondTargetLanguageSelect = document.getElementById('second-target-language');
-    
+
     // Clear existing options
     defaultTargetLanguageSelect.innerHTML = '';
-    secondTargetLanguageSelect.innerHTML = '';
+
+    // Only handle second language if the element exists
+    if (secondTargetLanguageSelect) {
+        secondTargetLanguageSelect.innerHTML = '';
+
+        // Add empty option for second language
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = 'None - Single language mode';
+        secondTargetLanguageSelect.appendChild(emptyOption);
+    }
 
     languageKeys.forEach(key => {
-        const message = chrome.i18n.getMessage(key);
-        
+        const message = chrome.i18n.getMessage(key) || key;
+
         // Add to default target language select
         const defaultOption = document.createElement('option');
         defaultOption.value = key;
         defaultOption.textContent = message;
         defaultTargetLanguageSelect.appendChild(defaultOption);
-        
-        // Add to second target language select
-        const secondOption = document.createElement('option');
-        secondOption.value = key;
-        secondOption.textContent = message;
-        secondTargetLanguageSelect.appendChild(secondOption);
+
+        // Add to second target language select only if it exists
+        if (secondTargetLanguageSelect) {
+            const secondOption = document.createElement('option');
+            secondOption.value = key;
+            secondOption.textContent = message;
+            secondTargetLanguageSelect.appendChild(secondOption);
+        }
     });
 }
 
@@ -45,45 +94,67 @@ function populateLanguages() {
 document.addEventListener('DOMContentLoaded', () => {
     setupI18n();
 
-    const state = { activeProvider: 'gemini' };
+    const state = { 
+        activeProvider: 'gemini',
+        showOnlyFreeModels: true,
+        allModelsCache: {} // Cache all models for each provider
+    };
+
     const elements = {
         tabs: document.querySelectorAll('.tab-button'),
         tabContents: document.querySelectorAll('.tab-content'),
         statusDiv: document.getElementById('status'),
+        openrouterFreeModelsToggle: document.getElementById('openrouter-free-models-toggle'),
         providers: {
             gemini: {
                 apiKeyInput: document.getElementById('gemini-api-key'),
                 modelSelect: document.getElementById('gemini-model-select'),
+                visionModelSelect: document.getElementById('gemini-vision-model-select'),
                 fetchButton: document.querySelector('.fetch-models-button[data-provider="gemini"]'),
             },
             siliconflow: {
                 apiKeyInput: document.getElementById('siliconflow-api-key'),
                 modelSelect: document.getElementById('siliconflow-model-select'),
+                visionModelSelect: document.getElementById('siliconflow-vision-model-select'),
                 fetchButton: document.querySelector('.fetch-models-button[data-provider="siliconflow"]'),
             },
             openrouter: {
                 apiKeyInput: document.getElementById('openrouter-api-key'),
                 modelSelect: document.getElementById('openrouter-model-select'),
+                visionModelSelect: document.getElementById('openrouter-vision-model-select'),
                 fetchButton: document.querySelector('.fetch-models-button[data-provider="openrouter"]'),
+            },
+            nanogpt: {
+                apiKeyInput: document.getElementById('nanogpt-api-key'),
+                modelSelect: document.getElementById('nanogpt-model-select'),
+                visionModelSelect: document.getElementById('nanogpt-vision-model-select'),
+                fetchButton: document.querySelector('.fetch-models-button[data-provider="nanogpt"]'),
             },
             ollama: {
                 apiKeyInput: document.getElementById('ollama-url'),
                 modelSelect: document.getElementById('ollama-model-select'),
+                visionModelSelect: document.getElementById('ollama-vision-model-select'),
                 fetchButton: document.querySelector('.fetch-models-button[data-provider="ollama"]'),
             },
         },
         targetLanguages: {
             defaultTargetLanguageSelect: document.getElementById('default-target-language'),
-            secondTargetLanguageSelect: document.getElementById('second-target-language'),
+            secondTargetLanguageSelect: document.getElementById('second-target-language'), // This might be null
         },
     };
+
+    // Make all model selects searchable
+    Object.values(elements.providers).forEach(provider => {
+        makeSelectSearchable(provider.modelSelect);
+        makeSelectSearchable(provider.visionModelSelect);
+    });
 
     function switchTab(providerName) {
         state.activeProvider = providerName;
         elements.tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.provider === providerName));
         elements.tabContents.forEach(content => content.classList.toggle('active', content.id === `${providerName}-settings`));
         chrome.storage.local.set({ activeProvider: providerName });
-        showStatus(chrome.i18n.getMessage('statusProviderSwitched', [providerName]), 'info', 1500);
+        showStatus(`Switched to ${providerName}`, 'info', 1500);
     }
 
     async function handleFetchModels(providerName) {
@@ -91,63 +162,101 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputValue = apiKeyInput.value;
         if (!inputValue) {
             const errorMsg = providerName === 'ollama' ? 
-                chrome.i18n.getMessage('statusOllamaUrlNeeded') : 
-                chrome.i18n.getMessage('statusApiKeyNeeded');
+                'Please enter Ollama server URL' : 
+                'Please enter API key';
             showStatus(errorMsg, 'error');
             return;
         }
-        
+
         if (providerName === 'ollama') {
             chrome.storage.local.set({ [`${providerName}Url`]: inputValue }, () => {
-                showStatus(chrome.i18n.getMessage('statusOllamaUrlSaved'), 'info');
+                showStatus('Ollama URL saved', 'info');
             });
             await fetchOllamaModels(inputValue);
         } else {
             chrome.storage.local.set({ [`${providerName}ApiKey`]: inputValue }, () => {
-                showStatus(chrome.i18n.getMessage('statusApiKeySaved'), 'info');
+                showStatus('API key saved', 'info');
             });
             if (providerName === 'gemini') await fetchGeminiModels(inputValue);
             else if (providerName === 'siliconflow') await fetchSiliconFlowModels(inputValue);
             else if (providerName === 'openrouter') await fetchOpenRouterModels(inputValue);
+            else if (providerName === 'nanogpt') await fetchNanoGPTModels(inputValue);
         }
     }
 
     async function fetchGeminiModels(apiKey) {
         const modelSelect = elements.providers.gemini.modelSelect;
-        modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusFetchingModels')}</option>`;
+        const visionModelSelect = elements.providers.gemini.visionModelSelect;
+
+        modelSelect.innerHTML = `<option>Fetching models...</option>`;
+        visionModelSelect.innerHTML = `<option>Fetching models...</option>`;
+
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
             if (!response.ok) throw new Error((await response.json()).error.message);
             const data = await response.json();
-            const supportedModels = data.models.filter(m => m.supportedGenerationMethods.includes('generateContent'));
-            populateModelSelect(modelSelect, supportedModels, m => m.name.replace('models/', ''), m => `${m.displayName} (${m.name.replace('models/', '')})`);
-            showStatus(chrome.i18n.getMessage('statusModelsSuccess'), 'success');
-            loadSelectedModel('gemini');
+
+            // Get all models that support content generation
+            const allModels = data.models
+                .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+                .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+            // Cache the models
+            state.allModelsCache.gemini = allModels;
+
+            // Populate both dropdowns with all models
+            populateModelSelect(modelSelect, allModels, m => m.name.replace('models/', ''), m => `${m.displayName} (${m.name.replace('models/', '')})`);
+            populateModelSelect(visionModelSelect, allModels, m => m.name.replace('models/', ''), m => `${m.displayName} (${m.name.replace('models/', '')})`);
+
+            showStatus('Models fetched successfully', 'success');
+            loadSelectedModels('gemini');
         } catch (error) {
-            modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusModelsFailed', [error.message])}</option>`;
-            showStatus(chrome.i18n.getMessage('statusModelsFailed', [error.message]), 'error');
+            modelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            visionModelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            showStatus(`Failed to fetch models: ${error.message}`, 'error');
         }
     }
 
     async function fetchSiliconFlowModels(apiKey) {
         const modelSelect = elements.providers.siliconflow.modelSelect;
-        modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusFetchingModels')}</option>`;
+        const visionModelSelect = elements.providers.siliconflow.visionModelSelect;
+
+        modelSelect.innerHTML = `<option>Fetching models...</option>`;
+        visionModelSelect.innerHTML = `<option>Fetching models...</option>`;
+
         try {
-            const response = await fetch('https://api.siliconflow.cn/v1/models?type=text&sub_type=chat', { headers: { 'Authorization': `Bearer ${apiKey}` } });
+            const response = await fetch('https://api.siliconflow.cn/v1/models?type=text&sub_type=chat', { 
+                headers: { 'Authorization': `Bearer ${apiKey}` } 
+            });
             if (!response.ok) throw new Error((await response.json()).error.message);
             const data = await response.json();
-            populateModelSelect(modelSelect, data.data, m => m.id, m => m.id);
-            showStatus(chrome.i18n.getMessage('statusModelsSuccess'), 'success');
-            loadSelectedModel('siliconflow');
+
+            // Sort all models alphabetically
+            const allModels = data.data.sort((a, b) => a.id.localeCompare(b.id));
+
+            // Cache the models
+            state.allModelsCache.siliconflow = allModels;
+
+            // Populate both dropdowns with all models
+            populateModelSelect(modelSelect, allModels, m => m.id, m => m.id);
+            populateModelSelect(visionModelSelect, allModels, m => m.id, m => m.id);
+
+            showStatus('Models fetched successfully', 'success');
+            loadSelectedModels('siliconflow');
         } catch (error) {
-            modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusModelsFailed', [error.message])}</option>`;
-            showStatus(chrome.i18n.getMessage('statusModelsFailed', [error.message]), 'error');
+            modelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            visionModelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            showStatus(`Failed to fetch models: ${error.message}`, 'error');
         }
     }
 
     async function fetchOpenRouterModels(apiKey) {
         const modelSelect = elements.providers.openrouter.modelSelect;
-        modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusFetchingModels')}</option>`;
+        const visionModelSelect = elements.providers.openrouter.visionModelSelect;
+
+        modelSelect.innerHTML = `<option>Fetching models...</option>`;
+        visionModelSelect.innerHTML = `<option>Fetching models...</option>`;
+
         try {
             const response = await fetch('https://openrouter.ai/api/v1/models', {
                 headers: { 
@@ -158,52 +267,152 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok) throw new Error((await response.json()).error?.message || 'Failed to fetch models');
             const data = await response.json();
-            // Filter for free models that support image input and sort by name
-            const chatModels = data.data.filter(m => 
+
+            // Get current toggle state
+            const showOnlyFree = state.showOnlyFreeModels;
+
+            // Filter out embedding and rerank models
+            let allModels = data.data.filter(m => 
                 m.id && 
                 m.name && 
                 !m.id.includes('embedding') && 
-                !m.id.includes('rerank') &&
-                m.name.toLowerCase().includes('free') &&
-                m.architecture && 
-                m.architecture.input_modalities && 
-                m.architecture.input_modalities.includes('image')
-            ).sort((a, b) => a.name.localeCompare(b.name));
-            populateModelSelect(modelSelect, chatModels, m => m.id, m => `${m.name} (${m.id})`);
-            showStatus(chrome.i18n.getMessage('statusModelsSuccess'), 'success');
-            loadSelectedModel('openrouter');
+                !m.id.includes('rerank')
+            );
+
+            // Apply free filter if enabled
+            if (showOnlyFree) {
+                allModels = allModels.filter(m => m.name.toLowerCase().includes('free'));
+            }
+
+            // Sort alphabetically
+            allModels.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Cache the models
+            state.allModelsCache.openrouter = allModels;
+
+            // Populate both dropdowns with all models
+            populateModelSelect(modelSelect, allModels, m => m.id, m => `${m.name} (${m.id})`);
+            populateModelSelect(visionModelSelect, allModels, m => m.id, m => `${m.name} (${m.id})`);
+
+            showStatus('Models fetched successfully', 'success');
+            loadSelectedModels('openrouter');
         } catch (error) {
-            modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusModelsFailed', [error.message])}</option>`;
-            showStatus(chrome.i18n.getMessage('statusModelsFailed', [error.message]), 'error');
+            modelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            visionModelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            showStatus(`Failed to fetch models: ${error.message}`, 'error');
+        }
+    }
+
+    async function fetchNanoGPTModels(apiKey) {
+        const modelSelect = elements.providers.nanogpt.modelSelect;
+        const visionModelSelect = elements.providers.nanogpt.visionModelSelect;
+        // Check subscription toggle state
+        const subscriptionOnly = document.getElementById('nanogpt-subscription-toggle').checked;
+        modelSelect.innerHTML = `<option>Fetching models...</option>`;
+        visionModelSelect.innerHTML = `<option>Fetching models...</option>`;
+
+        const endpoint = subscriptionOnly ? 
+        'https://nano-gpt.com/api/subscription/v1/models' : 
+        'https://nano-gpt.com/api/v1/models';
+
+        try {
+            const response = await fetch(endpoint, {
+                headers: { 
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) throw new Error((await response.json()).error?.message || 'Failed to fetch models');
+            const data = await response.json();
+
+            // Get current toggle state
+            const showOnlyFree = state.showOnlyFreeModels;
+
+            // Filter models
+            let allModels = data.data.filter(m => 
+                m.id && 
+                !m.id.includes('embedding') && 
+                !m.id.includes('rerank')
+            );
+
+            // Apply free filter if enabled and models have pricing info
+            if (showOnlyFree && data.data[0]?.pricing !== undefined) {
+                allModels = allModels.filter(m => !m.pricing || m.pricing === 0);
+            }
+
+            // Sort alphabetically
+            allModels.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+
+            // Cache the models
+            state.allModelsCache.nanogpt = allModels;
+
+            // Populate both dropdowns with all models
+            populateModelSelect(modelSelect, allModels, m => m.id, m => m.id);
+            populateModelSelect(visionModelSelect, allModels, m => m.id, m => m.id);
+
+            showStatus('Models fetched successfully', 'success');
+            loadSelectedModels('nanogpt');
+        } catch (error) {
+            modelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            visionModelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            showStatus(`Failed to fetch models: ${error.message}`, 'error');
         }
     }
 
     async function fetchOllamaModels(ollamaUrl) {
         const modelSelect = elements.providers.ollama.modelSelect;
-        modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusFetchingModels')}</option>`;
+        const visionModelSelect = elements.providers.ollama.visionModelSelect;
+
+        modelSelect.innerHTML = `<option>Fetching models...</option>`;
+        visionModelSelect.innerHTML = `<option>Fetching models...</option>`;
+
         try {
             const response = await fetch(`${ollamaUrl}/api/tags`);
             if (!response.ok) throw new Error('Failed to connect to Ollama server');
             const data = await response.json();
 
-            populateModelSelect(modelSelect, data.models, m => m.name, m => `${m.name} (${(m.size / 1024 / 1024 / 1024).toFixed(1)}GB)`);
-            showStatus(chrome.i18n.getMessage('statusModelsSuccess'), 'success');
-            loadSelectedModel('ollama');
-            
+            // Sort all models alphabetically
+            const allModels = data.models.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Cache the models
+            state.allModelsCache.ollama = allModels;
+
+            // Populate both dropdowns with all models
+            populateModelSelect(modelSelect, allModels, m => m.name, m => `${m.name} (${(m.size / 1024 / 1024 / 1024).toFixed(1)}GB)`);
+            populateModelSelect(visionModelSelect, allModels, m => m.name, m => `${m.name} (${(m.size / 1024 / 1024 / 1024).toFixed(1)}GB)`);
+
+            showStatus('Models fetched successfully', 'success');
+            loadSelectedModels('ollama');
+
             // If no model was previously selected and we have models, auto-save the first one
-            if (data.models.length > 0 && modelSelect.value) {
-                saveSelectedModel('ollama');
+            if (allModels.length > 0) {
+                if (!modelSelect.value || modelSelect.value === allModels[0].name) {
+                    saveSelectedModel('ollama', 'text');
+                }
+                if (!visionModelSelect.value || visionModelSelect.value === allModels[0].name) {
+                    saveSelectedModel('ollama', 'vision');
+                }
             }
         } catch (error) {
-            modelSelect.innerHTML = `<option>${chrome.i18n.getMessage('statusModelsFailed', [error.message])}</option>`;
-            showStatus(chrome.i18n.getMessage('statusModelsFailed', [error.message]), 'error');
+            modelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            visionModelSelect.innerHTML = `<option>Failed to fetch models: ${error.message}</option>`;
+            showStatus(`Failed to fetch models: ${error.message}`, 'error');
         }
     }
 
     function populateModelSelect(selectElement, models, valueFn, textFn) {
         selectElement.innerHTML = '';
+
+        // Add "Same as Translation Model" option for vision/OCR selects
+        if (selectElement.id && selectElement.id.includes('vision-model-select')) {
+            const sameOption = document.createElement('option');
+            sameOption.value = '__same_as_text__';
+            sameOption.textContent = 'Same as Translation Model';
+            selectElement.appendChild(sameOption);
+        }
+
         if (models.length === 0) {
-            selectElement.innerHTML = '<option>No models available</option>'; // Fallback
+            selectElement.innerHTML = '<option>No models available</option>';
             return;
         }
         models.forEach(model => {
@@ -212,27 +421,49 @@ document.addEventListener('DOMContentLoaded', () => {
             option.textContent = textFn(model);
             selectElement.appendChild(option);
         });
-        
+
         // Auto-select the first model if no model is currently selected
         if (models.length > 0 && !selectElement.value) {
             selectElement.value = valueFn(models[0]);
         }
     }
 
-    function saveSelectedModel(providerName) {
-        const { modelSelect } = elements.providers[providerName];
-        if (modelSelect.value) {
-            const key = `${providerName}SelectedModel`;
-            chrome.storage.local.set({ [key]: modelSelect.value }, () => {
-                showStatus(chrome.i18n.getMessage('statusModelSaved', [modelSelect.value]), 'success');
+    function saveSelectedModel(providerName, modelType) {
+        const selectElement = modelType === 'vision' ? 
+            elements.providers[providerName].visionModelSelect : 
+            elements.providers[providerName].modelSelect;
+
+        if (selectElement.value) {
+            const key = modelType === 'vision' ? 
+                `${providerName}SelectedVisionModel` : 
+                `${providerName}SelectedModel`;
+            chrome.storage.local.set({ [key]: selectElement.value }, () => {
+                showStatus(`Model saved: ${selectElement.value}`, 'success');
             });
         }
     }
 
     function loadAllSettings() {
-        const keys = ['activeProvider', 'geminiApiKey', 'siliconflowApiKey', 'openrouterApiKey', 'ollamaUrl', 'geminiSelectedModel', 'siliconflowSelectedModel', 'openrouterSelectedModel', 'ollamaSelectedModel', 'targetLanguage', 'secondTargetLanguage'];
+        const keys = [
+            'activeProvider', 'showOnlyFreeModels',
+            'geminiApiKey', 'siliconflowApiKey', 'openrouterApiKey', 'nanogptApiKey', 'ollamaUrl',
+            'geminiSelectedModel', 'geminiSelectedVisionModel',
+            'siliconflowSelectedModel', 'siliconflowSelectedVisionModel',
+            'openrouterSelectedModel', 'openrouterSelectedVisionModel',
+            'nanogptSelectedModel', 'nanogptSelectedVisionModel',
+            'ollamaSelectedModel', 'ollamaSelectedVisionModel',
+            'targetLanguage', 'secondTargetLanguage'
+        ];
+
         chrome.storage.local.get(keys, (result) => {
             if (result.activeProvider) switchTab(result.activeProvider);
+
+            // Load free models toggle state
+            state.showOnlyFreeModels = result.showOnlyFreeModels !== false;
+            if (elements.openrouterFreeModelsToggle) {
+                elements.openrouterFreeModelsToggle.checked = state.showOnlyFreeModels;
+            }    
+
             if (result.geminiApiKey) {
                 elements.providers.gemini.apiKeyInput.value = result.geminiApiKey;
                 fetchGeminiModels(result.geminiApiKey);
@@ -245,6 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.providers.openrouter.apiKeyInput.value = result.openrouterApiKey;
                 fetchOpenRouterModels(result.openrouterApiKey);
             }
+            if (result.nanogptApiKey) {
+                elements.providers.nanogpt.apiKeyInput.value = result.nanogptApiKey;
+                fetchNanoGPTModels(result.nanogptApiKey);
+            }
             if (result.ollamaUrl) {
                 elements.providers.ollama.apiKeyInput.value = result.ollamaUrl;
                 fetchOllamaModels(result.ollamaUrl);
@@ -252,14 +487,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Set default Ollama URL if not set
                 elements.providers.ollama.apiKeyInput.value = 'http://localhost:11434';
             }
-            
+
             // Load target language settings
             loadTargetLanguageSettings(result);
         });
     }
-    
+
     function loadTargetLanguageSettings(result) {
-        // Set default target language (synchronized with popup)
+        // Set default target language
         if (result.targetLanguage) {
             elements.targetLanguages.defaultTargetLanguageSelect.value = result.targetLanguage;
         } else {
@@ -270,19 +505,13 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.targetLanguages.defaultTargetLanguageSelect.value = defaultLangKey;
             chrome.storage.local.set({ targetLanguage: defaultLangKey });
         }
-        
-        // Set second target language
-        if (result.secondTargetLanguage) {
+
+        // Set second target language only if the element exists
+        if (elements.targetLanguages.secondTargetLanguageSelect && result.secondTargetLanguage !== undefined) {
             elements.targetLanguages.secondTargetLanguageSelect.value = result.secondTargetLanguage;
-        } else {
-            // Set a default second language (e.g., English if default is Chinese, vice versa)
-            const defaultLang = elements.targetLanguages.defaultTargetLanguageSelect.value;
-            const secondLang = defaultLang === 'langSimplifiedChinese' ? 'langEnglish' : 'langSimplifiedChinese';
-            elements.targetLanguages.secondTargetLanguageSelect.value = secondLang;
-            chrome.storage.local.set({ secondTargetLanguage: secondLang });
         }
     }
-    
+
     function getDefaultLanguageKey(browserLang, langCode) {
         const browserLangToMsgKey = {
             'en': 'langEnglish',
@@ -315,16 +544,24 @@ document.addEventListener('DOMContentLoaded', () => {
             'ro': 'langRomanian',
             'sk': 'langSlovak'
         };
-        
+
         return browserLangToMsgKey[browserLang] || browserLangToMsgKey[langCode] || 'langEnglish';
     }
-    
-    function loadSelectedModel(providerName) {
-        chrome.storage.local.get([`${providerName}SelectedModel`], (result) => {
-            const model = result[`${providerName}SelectedModel`];
-            const { modelSelect } = elements.providers[providerName];
-            if (model && [...modelSelect.options].some(opt => opt.value === model)) {
-                modelSelect.value = model;
+
+    function loadSelectedModels(providerName) {
+        chrome.storage.local.get([
+            `${providerName}SelectedModel`,
+            `${providerName}SelectedVisionModel`
+        ], (result) => {
+            const textModel = result[`${providerName}SelectedModel`];
+            const visionModel = result[`${providerName}SelectedVisionModel`];
+            const { modelSelect, visionModelSelect } = elements.providers[providerName];
+
+            if (textModel && [...modelSelect.options].some(opt => opt.value === textModel)) {
+                modelSelect.value = textModel;
+            }
+            if (visionModel && [...visionModelSelect.options].some(opt => opt.value === visionModel)) {
+                visionModelSelect.value = visionModel;
             }
         });
     }
@@ -338,27 +575,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
     }
 
+    // Event listeners
     elements.tabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.provider)));
+
     for (const providerName in elements.providers) {
         elements.providers[providerName].fetchButton.addEventListener('click', () => handleFetchModels(providerName));
-        elements.providers[providerName].modelSelect.addEventListener('change', () => saveSelectedModel(providerName));
+        elements.providers[providerName].modelSelect.addEventListener('change', () => saveSelectedModel(providerName, 'text'));
+        elements.providers[providerName].visionModelSelect.addEventListener('change', () => saveSelectedModel(providerName, 'vision'));
     }
-    
-    // Add event listeners for target language settings
+
+    // Free models toggle
+    if (elements.openrouterFreeModelsToggle) {
+        elements.openrouterFreeModelsToggle.addEventListener('change', async () => {
+            state.showOnlyFreeModels = elements.openrouterFreeModelsToggle.checked;
+        chrome.storage.local.set({ showOnlyFreeModels: state.showOnlyFreeModels });
+
+        // Refresh models for providers that support free filtering
+        const { activeProvider } = await chrome.storage.local.get('activeProvider');
+        if (activeProvider === 'openrouter' || activeProvider === 'nanogpt') {
+            const apiKey = elements.providers[activeProvider].apiKeyInput.value;
+            if (apiKey) {
+                if (activeProvider === 'openrouter') {
+                    await fetchOpenRouterModels(apiKey);
+                } else if (activeProvider === 'nanogpt') {
+                    await fetchNanoGPTModels(apiKey);
+                }
+            }
+        }
+    });
+    }
+
+    // NanoGPT subscription toggle
+    document.getElementById('nanogpt-subscription-toggle').addEventListener('change', async () => {
+        const apiKey = elements.providers.nanogpt.apiKeyInput.value;
+        if (apiKey) {
+            await fetchNanoGPTModels(apiKey);
+        }
+    });
+
+    // Target language settings
     elements.targetLanguages.defaultTargetLanguageSelect.addEventListener('change', () => {
         const value = elements.targetLanguages.defaultTargetLanguageSelect.value;
         chrome.storage.local.set({ targetLanguage: value }, () => {
-            showStatus(chrome.i18n.getMessage('statusModelSaved', [chrome.i18n.getMessage(value)]), 'success');
-        });
-    });
-    
-    elements.targetLanguages.secondTargetLanguageSelect.addEventListener('change', () => {
-        const value = elements.targetLanguages.secondTargetLanguageSelect.value;
-        chrome.storage.local.set({ secondTargetLanguage: value }, () => {
-            showStatus(chrome.i18n.getMessage('statusModelSaved', [chrome.i18n.getMessage(value)]), 'success');
+            const langName = chrome.i18n.getMessage(value) || value;
+            showStatus(`Primary language set to: ${langName}`, 'success');
         });
     });
 
-    loadAllSettings();
+    if (elements.targetLanguages.secondTargetLanguageSelect) {
+        elements.targetLanguages.secondTargetLanguageSelect.addEventListener('change', () => {
+            const value = elements.targetLanguages.secondTargetLanguageSelect.value;
+            chrome.storage.local.set({ secondTargetLanguage: value }, () => {
+                const displayName = value ? (chrome.i18n.getMessage(value) || value) : 'None';
+                showStatus(`Second language set to: ${displayName}`, 'success');
+            });
+        });
+    }
     populateLanguages();
+    loadAllSettings();
 });
