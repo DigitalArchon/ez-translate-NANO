@@ -1,3 +1,18 @@
+Everything below is from the original Ez Translate for reference. Here are some notes regarding this fork:
+1) Added NanoGPT support as they are my preferred provider. www.nano-gpt.com for more info.
+2) The way image to text translation works is now totally different. I made the change, as very few vision models are also good at translations. Now you select your translation model and select a different OCR model. The OCR model simply gets converts the image to text and feeds it to your translation model to do the actual translation. IF your preferred translation model does support vision (like Chat GPT 4o for example) you can set the OCR model to be the same and it will skip the OCR step and send the image to your model directly.
+3) For now I've removed the option to translate into a primary/secondary language, as I was having some trouble with it.
+4) In most Chromium based browsers, everything works fine. In Brave however the Ctrl-Shift-S shortcut to do an image to text translation doesn't work. You have to manually click the button in the extension icon.
+5) I have only properly tested OpenRouter, NanoGPT and Ollama to ensure everything works. I may have broken Gemini or SiliconFlow, but I have no plans to test or fix that (they also may work fine, I have no idea).
+6) For OpenRouter, instead of only showing free models, you can now choose to view all models, or only free models.
+7) For NanoGPT you can choose to view all models, or only the models free with a subscription.
+8) For Ollama, it works, but you need to configure the environment with Environment="OLLAMA_ORIGINS=*" and it has to be done differently based on how you installed Ollama. In most cases you need to run "sudo systemctl edit ollama.service" and add that text to the top under [Service] then run "sudo systemctl daemon-reload" and
+"sudo systemctl restart ollama". But your milage may vary.
+
+Finally, for those using NanoGPT with a subscription, I personally recommend/use DeepSeek 3.1 for translation and GLM4.5V-FP8 for OCR, as both are included in the subscription and I find that the best combo.
+
+Following is the original readme:
+
 <div align="center">
   <img src="icons/icon128.png" alt="EZ Translate Logo" width="128" height="128">
   <h1>EZ Translate: Smart Browser Translation Plugin</h1>
