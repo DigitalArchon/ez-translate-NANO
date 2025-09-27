@@ -1,6 +1,6 @@
 # Privacy Policy for LLM-Translate
 
-**Last Updated:** July 23, 2025
+**Last Updated:** September 28, 2025
 
 Thank you for using LLM-Translate. Your privacy is important to us. This privacy policy explains what information the extension handles and why.
 
@@ -29,6 +29,7 @@ When you use the extension, the text you translate and your API key are sent to 
 *   **Google Gemini:** [Google Privacy Policy](https://policies.google.com/privacy)
 *   **Silicon Flow:** [Privacy Policy](https://docs.siliconflow.cn/en/legals/privacy-policy)
 *   **Openrouter:** [Privacy Policy](https://openrouter.ai/privacy)
+*   **NanoGPT:** [Privacy Policy](https://nano-gpt.com/legal/privacy-policy)
 
 ### Data Security
 
