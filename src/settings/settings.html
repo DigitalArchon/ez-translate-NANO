@@ -1,143 +1,194 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title data-i18n="settingsTitle"></title>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="settings.css">
 </head>
 <body>
-    <h1 data-i18n="settingsTitle"></h1>
+    <div class="container">
+        <h1 data-i18n="settingsTitle"></h1>
 
-    <div class="tabs">
-        <button class="tab-button active" data-provider="gemini" data-i18n="geminiProvider"></button>
-        <button class="tab-button" data-provider="siliconflow" data-i18n="siliconflowProvider"></button>
-        <button class="tab-button" data-provider="openrouter" data-i18n="openrouterProvider"></button>
-        <button class="tab-button" data-provider="ollama" data-i18n="ollamaProvider"></button>
-    </div>
+        <!-- Provider Tabs -->
+        <div class="tabs">
+            <button class="tab-button active" data-provider="gemini">Gemini</button>
+            <button class="tab-button" data-provider="siliconflow">SiliconFlow</button>
+            <button class="tab-button" data-provider="openrouter">OpenRouter</button>
+            <button class="tab-button" data-provider="nanogpt">NanoGPT</button>
+            <button class="tab-button" data-provider="ollama">Ollama</button>
+        </div>
 
-    <!-- Gemini Settings -->
-    <div id="gemini-settings" class="tab-content active">
-        <div class="form-group">
-            <label for="gemini-api-key">
-                <span data-i18n="geminiApiKeyLabel"></span>
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" data-i18n="getApiKeyLink"></a>
-            </label>
-            <div class="api-key-container">
-                <input type="password" id="gemini-api-key" data-i18n-placeholder="geminiApiPlaceholder">
-                <button class="fetch-models-button btn-action" data-provider="gemini" data-i18n="fetchModelsButton"></button>
+        <!-- Gemini Settings -->
+        <div id="gemini-settings" class="tab-content active">
+            <h2>Google Gemini Settings</h2>
+            <p class="provider-description">Use Google's Gemini models for translation. Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a>.</p>
+
+            <div class="form-group">
+                <label for="gemini-api-key">API Key:</label>
+                <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key">
+                <button class="fetch-models-button" data-provider="gemini">Fetch Models</button>
+            </div>
+
+            <div class="form-group">
+                <label for="gemini-model-select">Text Translation Model:</label>
+                <select id="gemini-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for translating selected text</small>
+            </div>
+
+            <div class="form-group">
+                <label for="gemini-vision-model-select">OCR Model:</label>
+                <select id="gemini-vision-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for extracting text from screenshots (select "Same as Translation Model" for single-step translation)</small>
             </div>
         </div>
-        <div class="form-group">
-            <label data-i18n="modelSelectLabel"></label>
-            <p class="hint">
-                <span data-i18n="geminiModelHint"></span>
-                <a href="https://github.com/licon/llm-translate?tab=readme-ov-file#recommended-models" target="_blank" data-i18n="recommendedModelsLink"></a>
-            </p>
-            <select id="gemini-model-select"></select>
-        </div>
-    </div>
 
-    <!-- Silicon Flow Settings -->
-    <div id="siliconflow-settings" class="tab-content">
-        <div class="form-group">
-            <label for="siliconflow-api-key">
-                <span data-i18n="siliconflowApiKeyLabel"></span>
-                <a href="https://cloud.siliconflow.cn/me/account/ak" target="_blank" data-i18n="getApiKeyLink"></a>
-            </label>
-            <div class="api-key-container">
-                <input type="password" id="siliconflow-api-key" data-i18n-placeholder="siliconflowApiPlaceholder">
-                <button class="fetch-models-button btn-action" data-provider="siliconflow" data-i18n="fetchModelsButton"></button>
+        <!-- SiliconFlow Settings -->
+        <div id="siliconflow-settings" class="tab-content">
+            <h2>SiliconFlow Settings</h2>
+            <p class="provider-description">Use SiliconFlow's API for translation. Get your API key from <a href="https://siliconflow.cn" target="_blank">SiliconFlow</a>.</p>
+
+            <div class="form-group">
+                <label for="siliconflow-api-key">API Key:</label>
+                <input type="password" id="siliconflow-api-key" placeholder="Enter your SiliconFlow API key">
+                <button class="fetch-models-button" data-provider="siliconflow">Fetch Models</button>
+            </div>
+
+            <div class="form-group">
+                <label for="siliconflow-model-select">Text Translation Model:</label>
+                <select id="siliconflow-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for translating selected text</small>
+            </div>
+
+            <div class="form-group">
+                <label for="siliconflow-vision-model-select">OCR Model:</label>
+                <select id="siliconflow-vision-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for extracting text from screenshots</small>
             </div>
         </div>
-        <div class="form-group">
-            <label data-i18n="modelSelectLabel"></label>
-            <p class="hint">
-                <span data-i18n="siliconflowModelHint"></span>
-                <a href="https://github.com/licon/llm-translate?tab=readme-ov-file#recommended-models" target="_blank" data-i18n="recommendedModelsLink"></a>
-            </p>
-            <select id="siliconflow-model-select"></select>
-        </div>
-    </div>
 
-    <!-- OpenRouter Settings -->
-    <div id="openrouter-settings" class="tab-content">
-        <div class="form-group">
-            <label for="openrouter-api-key">
-                <span data-i18n="openrouterApiKeyLabel"></span>
-                <a href="https://openrouter.ai/keys" target="_blank" data-i18n="getApiKeyLink"></a>
-            </label>
-            <div class="api-key-container">
-                <input type="password" id="openrouter-api-key" data-i18n-placeholder="openrouterApiPlaceholder">
-                <button class="fetch-models-button btn-action" data-provider="openrouter" data-i18n="fetchModelsButton"></button>
+        <!-- OpenRouter Settings -->
+        <div id="openrouter-settings" class="tab-content">
+            <h2>OpenRouter Settings</h2>
+            <p class="provider-description">Use OpenRouter to access various AI models. Get your API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a>.</p>
+
+            <!-- Free Models Toggle -->
+            <div class="free-models-toggle-container">
+                <label>
+                    <input type="checkbox" id="openrouter-free-models-toggle" checked>
+                    <span>Show only free models.</span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label for="openrouter-api-key">API Key:</label>
+                <input type="password" id="openrouter-api-key" placeholder="Enter your OpenRouter API key">
+                <button class="fetch-models-button" data-provider="openrouter">Fetch Models</button>
+            </div>
+
+            <div class="form-group">
+                <label for="openrouter-model-select">Text Translation Model:</label>
+                <select id="openrouter-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for translating selected text</small>
+            </div>
+
+            <div class="form-group">
+                <label for="openrouter-vision-model-select">OCR Model:</label>
+                <select id="openrouter-vision-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for translating text in screenshots (choose a vision-capable model)</small>
             </div>
         </div>
-        <div class="form-group">
-            <label data-i18n="modelSelectLabel"></label>
-            <p class="hint">
-                <span data-i18n="openrouterModelHint"></span>
-                <a href="https://openrouter.ai/models" target="_blank" data-i18n="recommendedModelsLink"></a>
-            </p>
-            <select id="openrouter-model-select"></select>
-        </div>
-    </div>
 
-    <!-- Ollama Settings -->
-    <div id="ollama-settings" class="tab-content">
-        <div class="ollama-notice">
-            <p class="cors-hint" data-i18n="ollamaCorsHint"></p>
-        </div>
-        <div class="form-group">
-            <label for="ollama-url">
-                <span data-i18n="ollamaUrlLabel"></span>
-                <a href="https://ollama.com/" target="_blank" data-i18n="getOllamaLink"></a>
-            </label>
-            <div class="api-key-container">
-                <input type="text" id="ollama-url" data-i18n-placeholder="ollamaUrlPlaceholder">
-                <button class="fetch-models-button btn-action" data-provider="ollama" data-i18n="fetchModelsButton"></button>
+        <!-- NanoGPT Settings -->
+        <div id="nanogpt-settings" class="tab-content">
+            <h2>NanoGPT Settings</h2>
+            <p class="provider-description">Use NanoGPT's OpenAI-compatible API for translation.</p>
+
+            <div class="subscription-models-toggle-container">
+                <label>
+                    <input type="checkbox" id="nanogpt-subscription-toggle">
+                    <span>Show only Subscription Models.</span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label for="nanogpt-api-key">API Key:</label>
+                <input type="password" id="nanogpt-api-key" placeholder="Enter your NanoGPT API key">
+                <button class="fetch-models-button" data-provider="nanogpt">Fetch Models</button>
+            </div>
+
+            <div class="form-group">
+                <label for="nanogpt-model-select">Text Translation Model:</label>
+                <select id="nanogpt-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for translating selected text</small>
+            </div>
+
+            <div class="form-group">
+                <label for="nanogpt-vision-model-select">OCR Model:</label>
+                <select id="nanogpt-vision-model-select">
+                    <option>Enter API key and fetch models first</option>
+                </select>
+                <small>Model used for translating text in screenshots (choose a vision-capable model)</small>
             </div>
         </div>
-        <div class="form-group">
-            <label data-i18n="modelSelectLabel"></label>
-            <p class="hint">
-                <span data-i18n="ollamaModelHint"></span>
-                <a href="https://github.com/licon/llm-translate?tab=readme-ov-file#recommended-models" target="_blank" data-i18n="recommendedModelsLink"></a>
-            </p>
-            <select id="ollama-model-select"></select>
-        </div>
-    </div>
 
-    <!-- Target Language Settings -->
-    <div class="target-language-settings">
-        <h2 data-i18n="targetLanguageSettingsTitle"></h2>
-        
-        <div class="form-group">
-            <label for="default-target-language" data-i18n="defaultTargetLanguageLabel"></label>
-            <p class="hint" data-i18n="defaultTargetLanguageHint"></p>
-            <select id="default-target-language"></select>
-        </div>
-        
-        <div class="form-group">
-            <label for="second-target-language" data-i18n="secondTargetLanguageLabel"></label>
-            <p class="hint" data-i18n="secondTargetLanguageHint"></p>
-            <select id="second-target-language"></select>
-        </div>
-    </div>
+        <!-- Ollama Settings -->
+        <div id="ollama-settings" class="tab-content">
+            <h2>Ollama Settings</h2>
+            <p class="provider-description">Use local Ollama models for translation. Make sure Ollama is running and accessible.</p>
 
-    <div id="status"></div>
-
-    <!-- GitHub Section -->
-    <div class="github-section">
-        <div class="github-content">
-            <h3 data-i18n="githubSectionTitle"></h3>
-            <p data-i18n="githubDescription"></p>
-            <div class="github-actions">
-                <a href="https://github.com/licon/llm-translate" target="_blank" class="github-link" data-i18n="visitGitHub"></a>
-                <a href="https://github.com/licon/llm-translate/issues" target="_blank" class="github-link issue-link" data-i18n="reportIssue"></a>
+            <div class="form-group">
+                <label for="ollama-url">Ollama Server URL:</label>
+                <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+                <button class="fetch-models-button" data-provider="ollama">Fetch Models</button>
             </div>
-            <p class="github-encouragement" data-i18n="githubEncouragement"></p>
-        </div>
-    </div>
 
+            <div class="form-group">
+                <label for="ollama-model-select">Text Translation Model:</label>
+                <select id="ollama-model-select">
+                    <option>Enter server URL and fetch models first</option>
+                </select>
+                <small>Model used for translating selected text</small>
+            </div>
+
+            <div class="form-group">
+                <label for="ollama-vision-model-select">OCR Model:</label>
+                <select id="ollama-vision-model-select">
+                    <option>Enter server URL and fetch models first</option>
+                </select>
+                <small>Model used for translating text in screenshots (choose a vision-capable model)</small>
+            </div>
+        </div>
+
+        <!-- Language Settings -->
+        <div class="language-settings">
+            <h2>Translation Language Settings</h2>
+            <div class="form-group">
+                <label for="default-target-language">Target Language:</label>
+                <select id="default-target-language"></select>
+                <small>The language to translate text into</small>
+            </div>
+        <!--    <div class="form-group">
+                <label for="second-target-language">Second Target Language (Optional):</label>
+                <select id="second-target-language"></select>
+                <small>If set, the extension will auto-detect source language and translate to the appropriate target. Leave as "None" for single language mode.</small>
+            </div> -->
+        </div>
+
+        <div id="status"></div>
+    </div>
     <script src="settings.js"></script>
 </body>
 </html>
