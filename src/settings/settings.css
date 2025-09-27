@@ -167,3 +167,54 @@ label a:hover { text-decoration: underline; }
         justify-content: center;
     }
 }
+
+.provider-description {
+    margin: 10px 0 20px 0;
+    padding: 10px;
+    background-color: #f0f8ff;
+    border-left: 3px solid #007bff;
+    border-radius: 3px;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+.provider-description a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.provider-description a:hover {
+    text-decoration: underline;
+}
+
+.tab-content h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+select {
+    cursor: pointer;
+}
+
+select:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
