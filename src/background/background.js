@@ -568,32 +568,80 @@ async function visionTranslateOpenAICompatible(imageDataUrl, provider) {
 }
 
 async function visionTranslateOllama(imageDataUrl) {
-    const { ollamaUrl, ollamaSelectedVisionModel, targetLanguage, secondTargetLanguage } = 
-        await chrome.storage.local.get(['ollamaUrl', 'ollamaSelectedVisionModel', 'targetLanguage', 'secondTargetLanguage']);
+    const { ollamaUrl, ollamaSelectedVisionModel, ollamaSelectedModel, targetLanguage, secondTargetLanguage } = 
+        await chrome.storage.local.get(['ollamaUrl', 'ollamaSelectedVisionModel', 'ollamaSelectedModel', 'targetLanguage', 'secondTargetLanguage']);
+
     const url = ollamaUrl; 
-    const modelName = ollamaSelectedVisionModel;
-    if (!url || !modelName) throw new Error('Ollama URL 或模型未配置');
+    const ocrModelName = ollamaSelectedVisionModel;
+    const textModelName = ollamaSelectedModel;
+
+    if (!url || !textModelName) throw new Error('Ollama URL 或模型未配置');
 
     const target = normalizeLanguageToEnglishName(targetLanguage || 'langEnglish');
     const second = normalizeLanguageToEnglishName(secondTargetLanguage || '');
 
-    let prompt;
-    if (second && second !== '') {
-        prompt = chrome.i18n.getMessage('imageTranslationPrompt', [target, second]);
+    // Check if using same model for both OCR and translation
+    if (ocrModelName === '__same_as_text__' || !ocrModelName) {
+        // Single-step translation using vision model
+        let prompt;
+        if (second && second !== '') {
+            prompt = `Extract all text from this image and translate it to ${target}. If the text is already in ${target}, translate it to ${second}. Return only the translated text without any additional commentary.`;
+        } else {
+            prompt = `Extract all text from this image and translate it to ${target}. Return only the translated text without any additional commentary.`;
+        }
+
+        // Remove data URL prefix and convert to base64
+        const base64Image = imageDataUrl.split(',')[1];
+
+        const response = await fetch(`${url}/api/generate`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ 
+                model: textModelName,
+                prompt: prompt,
+                images: [base64Image], // Correct format for Ollama vision
+                stream: false 
+            }) 
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Ollama Vision 请求失败: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data.response?.trim() || '';
     } else {
-        prompt = `Extract and translate all text in this image to ${target}. Return only the translated text.`;
+        // Two-step process: OCR then translate
+        const ocrPrompt = "Extract and return all text from this image exactly as it appears. Do not translate or modify the text. Only return the extracted text content.";
+
+        // OCR step with vision model
+        const base64Image = imageDataUrl.split(',')[1];
+        const ocrResponse = await fetch(`${url}/api/generate`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ 
+                model: ocrModelName,
+                prompt: ocrPrompt,
+                images: [base64Image],
+                stream: false 
+            }) 
+        });
+
+        if (!ocrResponse.ok) {
+            const errorText = await ocrResponse.text();
+            throw new Error(`Ollama OCR 请求失败: ${ocrResponse.status} ${errorText}`);
+        }
+
+        const ocrData = await ocrResponse.json();
+        const extractedText = ocrData.response?.trim() || '';
+
+        if (!extractedText) throw new Error('No text found in image');
+
+        // Translate the extracted text using the text model
+        const translation = await callOllamaAPI(extractedText, url, textModelName, target, second);
+        return translation;
     }
-
-    // Note: Many Ollama models don't support vision; this is a best-effort text prompt
-    const resp = await fetch(`${url}/api/generate`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ model: modelName, prompt: `${prompt}\n[Image as data URL]\n${imageDataUrl}`, stream: false }) 
-    });
-
-    if (!resp.ok) throw new Error('Ollama Vision 请求失败');
-    const data = await resp.json();
-    return data.response?.trim() || '';
 }
 
 // --- API 调用实现 ---
